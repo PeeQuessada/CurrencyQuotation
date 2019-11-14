@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
+    <labels>
+        <fullName>BaseCurrency</fullName>
+        <language>pt_BR</language>
+        <protected>true</protected>
+        <shortDescription>base currency for requisition of currencies</shortDescription>
+        <value>USD</value>
+    </labels>
+    <labels>
+        <fullName>CurrencyUpdate</fullName>
+        <language>pt_BR</language>
+        <protected>true</protected>
+        <shortDescription>Currency Update</shortDescription>
+        <value>BRL;EUR;  USD</value>
+    </labels>
+    <labels>
+        <fullName>EndpointAPICurrency</fullName>
+        <language>pt_BR</language>
+        <protected>true</protected>
+        <shortDescription>Endpoint API Currency</shortDescription>
+        <value>https://api.exchangerate-api.com/v4/latest/</value>
+    </labels>
+</CustomLabels>
