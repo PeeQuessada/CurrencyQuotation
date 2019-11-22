@@ -1,7 +1,7 @@
 global class batchCurrencyQuote implements Database.Batchable<sObject>, Database.AllowsCallouts, Database.Stateful, schedulable {
     
     global Database.QueryLocator start(Database.BatchableContext BC){
-       String fildsUpdate = label.currencyUpdate.replaceAll( '\\s+', '');
+       String fildsUpdate = label.currencyUpdate.replaceAll('\\s+', '');
        String query = 'SELECT Id, Name, Error__c';
        for(String currencyAux : fildsUpdate.split(';')){
       	 query += ', ' + currencyAux + '__c';     
@@ -12,32 +12,29 @@ global class batchCurrencyQuote implements Database.Batchable<sObject>, Database
     }
 
     global void execute(Database.BatchableContext BC, List<CurrencyQuotation__c> scope){
-        List<CurrencyQuotation__c> listUpdate = new List<CurrencyQuotation__c>();
+        //Atualiza todos os registros
         for(CurrencyQuotation__c updateCurrency : scope){
-            listUpdate.add(requestCurrency.requestAPI(updateCurrency, updateCurrency.Name));
+             updateCurrency = requestCurrency.requestAPI(updateCurrency);
         } 
-        if(scope.isEmpty())
-            listUpdate.add(requestCurrency.requestAPI(null, ''));
         
-        upsert listUpdate;
+        Database.upsert(scope, CurrencyQuotation__c.Fields.Name, false);
     }
 
     global void finish(Database.BatchableContext BC){
-        Integer timeSchedule = 600;
+        Integer timeSchedule = 86400;
         
+        //Verifica se existe algum registro, se não existir cria um novo e agenda um novo batch para um minuto
         if([SELECT Id FROM CurrencyQuotation__c].isEmpty()){
-        	insert new CurrencyQuotation__c(Name = label.baseCurrency.replaceAll( '\\s+', '')); 
+        	insert new CurrencyQuotation__c(Name = label.baseCurrency.replaceAll('\\s+', '')); 
             timeSchedule = 1;
         }
         
-        String jobName = 'batchCurrencyQuote' + Datetime.now();
+        String jobName = 'batchCurrencyQuote in time: ' + System.now();
         system.scheduleBatch(this, jobName, timeSchedule);
     }
     
-    
-    
     global void execute(SchedulableContext SC) {
-		database.executebatch(this,200);
+		database.executebatch(this,50);
     }
  
 }

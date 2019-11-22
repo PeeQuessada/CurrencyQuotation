@@ -1,87 +1,67 @@
 public class requestCurrency {
-
-    public static CurrencyQuotation__c requestAPI(CurrencyQuotation__c currencyQuote, String baseCurrency){      
+    
+    //Metodo retorna a cotação de uma moeda
+    public static CurrencyQuotation__c requestAPI(CurrencyQuotation__c currencyQuote){      
         
-        if(currencyQuote == null)
-            currencyQuote = new CurrencyQuotation__c();
-
-        String base;
-        if(baseCurrency != null && baseCurrency.trim() != '')
-            base = baseCurrency;
-        else 
-            base = label.baseCurrency.replaceAll( '\\s+', '');
-        
-        String endpoint = label.EndpointAPICurrency + base;
-        system.debug(endpoint);
+        //Endpoint e requisição
+        String endpoint = label.EndpointAPICurrency + currencyQuote.Name;
         HttpRequest req = new HttpRequest();
         req.setEndpoint(endpoint);
         req.setMethod('GET');
-        
         Http http = new Http();
         HttpResponse response = http.send(req);
         
-        requestCurrency.rateWrapper getCurrencys;
-        String error = '';
-        
+        //Atualiza os campos com o valor do retorno da API
         if(response.getStatusCode() == 200){
-            getCurrencys = new rateWrapper().parse(response.getBody());
-            String currencyUpdate = label.currencyUpdate.replaceAll( '\\s+', '');
+            requestCurrency.rateWrapper currencyWrapper = new rateWrapper().constructor(response.getBody());
+            String currencyUpdate = label.currencyUpdate.replaceAll('\\s+', '');
             
+            //Preenche cada campo com o novo valor, baseado na lista de campos disponivel (custom label)
             for(String currencyAux : currencyUpdate.split(';')){
-                String labelCurrency = currencyAux + '__c';  
-                Double value = 0;
-                
-                try{
-                    value = decimal.valueOf(getCurrencys.rates.get(currencyAux));
-                } catch(Exception e){
-                    error += 'error get field in API: ' + currencyAux + '; ';
-                }
-                
-                try{
-                	currencyQuote.put(labelCurrency, value);
-                } catch(Exception e){
-                    error += 'Error get field in Objct: ' + labelCurrency + 'in object; ';
-                }
-                
-              }
+                String fieldName  = currencyAux + '__c';                  
+                Double fieldvalue = decimal.valueOf(currencyWrapper.rates.get(currencyAux));
+                currencyQuote.put(fieldName, fieldvalue);
+            }
+            
         } else{
-            error += 'error in request API date: ' + datetime.now();
-        }
-        	
-        currencyQuote.error__c = error;
-        currencyQuote.Name = base;      
+            currencyQuote.error__c = 'error in request API date: ' + datetime.now();
+        }  
         
-		return currencyQuote;
+        return currencyQuote;
     }
     
+    //Wrapper com construtor que transforma o JSON no formato da classe
     public class rateWrapper{
         public Map<String, String> rates {get;set;}
         public String base {get;set;}
         public Boolean error {get;set;}
         
-        public rateWrapper parse(String json){
+        public rateWrapper constructor(String json){
             this.error = false;
             return (rateWrapper) System.JSON.deserialize(json, rateWrapper.class);
         }
     }
     
+    //Metodo aura para busca de uma cotação
+    @AuraEnabled
     public static CurrencyQuotation__c getCurrency(String baseCurrency){
-        String defaultCurrency = label.baseCurrency.replaceAll( '\\s+', '');
         
+        //Query para busca dos campos de uma moeda
         String query = 'SELECT Id, Error__c';
         for(String currencyAux : label.currencyUpdate.split(';')){
             query += ', ' + currencyAux + '__c';     
         }
         query += ' FROM CurrencyQuotation__c';
-        
         List<CurrencyQuotation__c> listCurrencyQuote = database.query(query);
         
+        //Verifica se existe um registro com o valor base igual ao solicitado
         for(CurrencyQuotation__c currencyAux : listCurrencyQuote){
             if(currencyAux.Name == baseCurrency)
                 return currencyAux;
         }
         
-        return requestCurrency.requestAPI(null, baseCurrency);
+        //Se nao for encontrado um registro com a moeda base requisitada ele faz uma nova requisição
+        return requestCurrency.requestAPI(new CurrencyQuotation__c(Name = baseCurrency));
     }
     
 }
